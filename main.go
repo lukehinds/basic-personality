@@ -45,22 +45,46 @@ func main() {
 	thing := newThing(fmt.Sprintf("[%s] Thing", time.Now().Format(time.RFC3339)))
 	extra := newExtra("Extra")
 
-	// Eventually it will be convenient to explicit Request and Response types
-	resp := &Response{}
-
 	// Try to put this Request (Thing+Extra) in the Log
 	log.Println("[main] Submitting it for inclusion in the Trillian Log")
-	resp, err = server.put(&Request{
-		thing: *thing,
-		extra: *extra,
-	})
-	log.Printf("[main] put: %s", resp.status)
+	{
+		resp, err := server.put(&PutRequest{
+			thing: *thing,
+			extra: *extra,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("[main] put: %s", resp.status)
+	}
 
 	// Try to get this Request (Thing+Extra) from the Log
 	log.Println("[main] Retrieving it from the Trillian Log")
-	resp, err = server.get(&Request{
-		thing: *thing,
-		extra: *extra,
-	})
-	log.Printf("[main] get: %s", resp.status)
+	var index int64
+	{
+		resp, err := server.get(&GetRequest{
+			thing: *thing,
+			extra: *extra,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("[main] get: %s [%d]", resp.status, resp.index)
+		index = resp.index
+	}
+
+	// Try to get an InclusionProof from the Log
+	log.Println("[main] Retrieving an InclusionProof for it from the Trillian Log")
+	{
+		resp, err := server.proof(&ProofRequest{
+			index: index,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for j, hash := range resp.hashes {
+			log.Printf("[main] proof: hash[%d]==%x\n", j, hash)
+		}
+	}
 }
