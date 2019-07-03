@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/trillian"
@@ -21,6 +22,7 @@ var (
 )
 
 func main() {
+	log.Println("[main] Entered")
 	flag.Parse()
 
 	// Establish gRPC connection w/ Trillian Log Server
@@ -45,9 +47,17 @@ func main() {
 	thing := newThing(fmt.Sprintf("[%s] Thing", time.Now().Format(time.RFC3339)))
 	extra := newExtra("Extra")
 
+	var wg sync.WaitGroup
+
 	// Try to put this Request (Thing+Extra) in the Log
 	log.Println("[main] Submitting it for inclusion in the Trillian Log")
-	{
+	wg.Add(1)
+	go func() {
+		defer func() {
+			log.Println("[main:put] Done")
+			wg.Done()
+		}()
+		log.Println("[main:put] Entered")
 		resp, err := server.put(&Request{
 			thing: *thing,
 			extra: *extra,
@@ -55,37 +65,65 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("[main] put: %s", resp.status)
-	}
+		log.Printf("[main:put] Status:%s", resp.status)
+	}()
 
 	// Wait for it
-	log.Printf("[main] Sleeping")
-	time.Sleep(2 * time.Second)
-	log.Printf("[main] Awake")
+	// log.Printf("[main] Sleeping")
+	// time.Sleep(2 * time.Second)
+	// log.Printf("[main] Awake")
 
 	// Await the Inclusion (Proof)
 	log.Println("[main] Awaiting Inclusion (Proof) in the Trillian Log")
-	{
-		resp, err := server.wait(&Request{
-			thing: *thing,
-		})
-		if err != nil {
-			log.Fatal(err)
+	wg.Add(1)
+	go func() {
+		defer func() {
+			log.Println("[main:wait] Done")
+			wg.Done()
+		}()
+		log.Println("[main:wait] Entered")
+		for {
+			resp, err := server.wait(&Request{
+				thing: *thing,
+			})
+			if err != nil {
+				log.Printf("[main:wait] %s", err)
+			}
+			log.Printf("[main:wait] Status:%s", resp.status)
+			if resp.status == "ok" {
+				break
+			}
+			log.Println("[main:wait] Sleeping")
+			time.Sleep(1 * time.Second)
 		}
-		log.Printf("[main] wait: %s", resp.status)
-	}
+	}()
 
 	// Try to get this Request (Thing+Extra) from the Log
 	log.Println("[main] Retrieving it from the Trillian Log")
-	{
-		resp, err := server.get(&Request{
-			thing: *thing,
-			extra: *extra,
-		})
-		if err != nil {
-			log.Fatal(err)
+	wg.Add(1)
+	go func() {
+		defer func() {
+			log.Println("[main:get] Done")
+			wg.Done()
+		}()
+		log.Println("[main:get] Entered")
+		for {
+			resp, err := server.get(&Request{
+				thing: *thing,
+				extra: *extra,
+			})
+			if err != nil {
+				log.Printf("[main:get] %s", err)
+			}
+			log.Printf("[main:get] Status:%s", resp.status)
+			if resp.status == "ok" {
+				break
+			}
+			log.Println("[main:get] Sleeping")
+			time.Sleep(1 * time.Second)
 		}
-		log.Printf("[main] get: %s", resp.status)
+	}()
 
-	}
+	wg.Wait()
+	log.Println("[main] Done")
 }
