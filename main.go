@@ -68,11 +68,6 @@ func main() {
 		log.Printf("[main:put] Status:%s", resp.status)
 	}()
 
-	// Wait for it
-	// log.Printf("[main] Sleeping")
-	// time.Sleep(2 * time.Second)
-	// log.Printf("[main] Awake")
-
 	// Await the Inclusion (Proof)
 	log.Println("[main] Awaiting Inclusion (Proof) in the Trillian Log")
 	wg.Add(1)
