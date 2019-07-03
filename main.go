@@ -48,7 +48,7 @@ func main() {
 	// Try to put this Request (Thing+Extra) in the Log
 	log.Println("[main] Submitting it for inclusion in the Trillian Log")
 	{
-		resp, err := server.put(&PutRequest{
+		resp, err := server.put(&Request{
 			thing: *thing,
 			extra: *extra,
 		})
@@ -58,33 +58,34 @@ func main() {
 		log.Printf("[main] put: %s", resp.status)
 	}
 
+	// Wait for it
+	log.Printf("[main] Sleeping")
+	time.Sleep(2 * time.Second)
+	log.Printf("[main] Awake")
+
+	// Await the Inclusion (Proof)
+	log.Println("[main] Awaiting Inclusion (Proof) in the Trillian Log")
+	{
+		resp, err := server.wait(&Request{
+			thing: *thing,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("[main] wait: %s", resp.status)
+	}
+
 	// Try to get this Request (Thing+Extra) from the Log
 	log.Println("[main] Retrieving it from the Trillian Log")
-	var index int64
 	{
-		resp, err := server.get(&GetRequest{
+		resp, err := server.get(&Request{
 			thing: *thing,
 			extra: *extra,
 		})
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("[main] get: %s [%d]", resp.status, resp.index)
-		index = resp.index
-	}
+		log.Printf("[main] get: %s", resp.status)
 
-	// Try to get an InclusionProof from the Log
-	log.Println("[main] Retrieving an InclusionProof for it from the Trillian Log")
-	{
-		resp, err := server.proof(&ProofRequest{
-			index: index,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for j, hash := range resp.hashes {
-			log.Printf("[main] proof: hash[%d]==%x\n", j, hash)
-		}
 	}
 }

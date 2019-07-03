@@ -1,35 +1,12 @@
 package main
 
-// PutRequest is a convenience type that we'll extend in the next iteration
-type PutRequest struct {
+// Request is a convenience type that we'll extend in the next iteration
+type Request struct {
 	thing Thing
 	extra Extra
 }
 
-// PutResponse is a convenience type that we'll extend in the next iteration
-type PutResponse struct {
+// Response is a convenience type that we'll extend in the next iteration
+type Response struct {
 	status string
-}
-
-// GetRequest is a convenience type that we'll extend in the next iteration
-type GetRequest struct {
-	thing Thing
-	extra Extra
-}
-
-// GetResponse is a convenience type that we'll extend in the next iteration
-type GetResponse struct {
-	status string
-	value  []byte
-	index  int64
-}
-
-// ProofRequest is a convenience type that we'll extend in the next iteration
-type ProofRequest struct {
-	index int64
-}
-
-// ProofResponse is a convenience type that we'll extend in the next iteration
-type ProofResponse struct {
-	hashes [][]byte
 }
