@@ -1,54 +1,14 @@
-// IMAGETRANS=${GOPATH}/src/github.com/google/image-transparency
-// GOOGLEAPIS=${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
-
-// Generates Golang (*.pb.go and *.pb.gw.go)
-// grpc-gateway provides RESTful API --> gRPC
-// https://github.com/grpc-ecosystem/grpc-gateway
-// protoc \
-//   --proto_path=${IMAGETRANS} \
-//   --proto_path=${GOOGLEAPIS} \
-//   --go_out=plugins=grpc:${GOPATH}/src \
-//   --grpc-gateway_out=logtostderr=true:${GOPATH}/src \
-//   ${IMAGETRANS}/protos/*.proto
-
-// Generates Envoy gRPC-JSON Transcoding (envoy.pb)
-// protoc \
-//   --proto_path=${IMAGETRANS} \
-//   --proto_path=${GOOGLEAPIS} \
-//   --include_imports \
-//   --include_source_info \
-//   --descriptor_set_out=${IMAGETRANS}/protos/envoy.pb \
-//   ${IMAGETRANS}/protos/*.proto
-
-// Generates JavaScript (*_pb.js)
-//   protoc  \
-//   --proto_path=${IMAGETRANS}  \
-//   --proto_path=${GOOGLEAPIS}   \
-//   --js_out=import_style=commonjs:${IMAGETRANS} \
-//   ${IMAGETRANS}/protos/*.proto
-
-// Generates Envoy gRPC-Web (*_grpc_web_pb.js)
-// Only need to do this for protos that define services
-//   protoc \
-//   --proto_path=${IMAGETRANS}  \
-//   --proto_path=${GOOGLEAPIS}   \
-//   --grpc-web_out=import_style=commonjs,mode=grpcwebtext:${IMAGETRANS} \
-//   ${IMAGETRANS}/protos/imagetransparency.proto
-
 syntax = "proto3";
 
 // The protobuf package name would result in a generated Golang package name of
-// google_imagetransparency_v1
+// google_basicpersonality_v1
 package google.basicpersonality.v1;
 
-// go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
-// Then must reference in
-// --proto_path=${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
 import "google/api/annotations.proto";
 
 // But using this option ensures that the generated Golang package name is more
 // appropriate
-option go_package = "github.com/DazWilkin/basic-personality";
+option go_package = "github.com/DazWilkin/basic-personality/protos";
 option java_package = "com.google.basicpersonality";
 
 service BasicPersonality {

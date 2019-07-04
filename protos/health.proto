@@ -1,16 +1,15 @@
 syntax = "proto3";
 
 // The protobuf package name would result in a generated Golang package name of
-// google_imagetransparency_v1
-package google.imagetransparency.v1;
+// google_basicpersonality_v1
+package google.basicpersonality.v1;
 
-// go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 import "google/api/annotations.proto";
 
 // But using this option ensures that the generated Golang package name is more
 // appropriate
-option go_package = "github.com/google/image-transparency/protos";
-option java_package = "com.google.imagetransparency";
+option go_package = "github.com/DazWilkin/basic-personality/protos";
+option java_package = "com.google.basicpersonality";
 
 service Health {
     // Not possible to have null request so have a request that is null
