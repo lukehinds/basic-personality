@@ -1,0 +1,212 @@
+# Dependencies:
+# Assumes db 'test' database is created see README.md
+# Assumes repository us.gcr.io/trillian exists and containers Trillian services
+#
+# Environment variables must be exported:
+# PROJECT
+# WORKDIR=${HOME}/Projects/${PROJECT}
+# GOPATH=${WORKDIR}/go
+# TAG=$(git rev-parse HEAD) -- for github.com/google/image-transparency repo
+# LOGID -- Trillian Log ID must be created beforehand: docker-compose up db log-server
+
+version: "3"
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.10.0
+    volumes:
+    - "${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml"
+    expose:
+    - "9090" # Default HTTP Endpoint
+    ports:
+    - 9090:9090
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - --fail
+      - "http://prometheus:9090/-/healthy"
+
+  opencensus-agent:
+    image: omnition/opencensus-agent:0.1.8
+    command:
+    - --config=/configs/ocagent.yaml
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/opencensus.json
+    volumes:
+    - "${WORKDIR}/opencensus.json:/secrets/opencensus.json"
+    - "${PWD}/ocagent.yaml:/configs/ocagent.yaml"
+    expose:
+    - "9090"  # ocagent.yaml defined Prometheus Exporter
+    - "9999"  # ocagent.yaml defined zPages
+    - "55678" # ocagent.yaml defined OpenCensus Receiver
+    ports:
+    - 9190:9090 # Debugging: Prometheus Metrics Exporter
+    - 9999:9999 # Debugging: zPages
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - --fail
+      - "http://opencensus-agent:9090/metrics"
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  # Assumes "test" database has been initialized outside (!) of Docker Compose (mysql-data)
+  db:
+    image: mariadb:10.4.6
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: zaphod
+    volumes:
+    - "trillian-data:/var/lib/mysql"
+    expose:
+    - "3306"
+
+  # For Debugging
+  adminer:
+    depends_on:
+    - db
+    image: adminer:4.7.1
+    ports:
+    - 7777:8080
+
+  basic-personality-server:
+    depends_on:
+    - opencensus-agent
+    - trillian-log-server
+    image: us.gcr.io/${PROJECT}/basic-personality-server:${TAG}
+    build:
+      context: .
+      dockerfile: ./Dockerfile.server
+    command:
+    - --grpc_endpoint=:50051
+    - --http_endpoint=:8080
+    - --cnss_endpoint=opencensus-agent:55678
+    - --zpgz_endpoint=:9999
+    - --tlog_endpoint=trillian-log-server:50051
+    - --tlog_id=${LOGID}
+    expose:
+    - "50051" # gRPC
+    - "8080"  # HTTP
+    - "9999"  # zPages
+    ports:
+    - 8080:8080
+    - 9998:9999
+    # Images don't include a shell|curl and thus no healthchecks :-(
+    # healthcheck:
+    #   test:
+    #   - CMD
+    #   - curl
+    #   - --fail
+    #   - "http://image-transparency-server:8080/healthz"
+    #   interval: 30s
+    #   timeout: 30s
+    #   retries: 3
+
+  basic-personality-client:
+    depends_on:
+    - opencensus-agent
+    - basic-personality-server
+    image: us.gcr.io/${PROJECT}/basic-personality-client:${TAG}
+    build:
+      context: .
+      dockerfile: ./Dockerfile.client
+    command:
+    - --grpc_endpoint=basic-personality-server:50051
+    - --cnss_endpoint=opencensus-agent:55678
+    - --zpgz_endpoint=:9999
+    expose:
+    - "9999" # zPages
+    ports:
+    - 9997:9999
+
+  # Expects trillian-log-server gRPC Endpoint on 50051 defined in envoy.grpc-web.yaml
+  # envoy-grpc-gateway:
+  #   depends_on:
+  #   - basic-personality-server
+  #   image: envoyproxy/envoy:v1.10.0
+  #   command:
+  #   - "--config-path /etc/envoy/envoy.yaml"
+  #   - "--log-level debug"
+  #   volumes:
+  #   - "${GOPATH}/src/github.com/DazWilkin/basic-personality/envoy.grpc-web.yaml:/etc/envoy/envoy.yaml"
+  #   expose:
+  #   - "8888" # HTTP Endpoint defined in envoy.grpc-web.yaml
+  #   - "9901" # Admin including /stats/prometheus defined in envoy.grpc-web.yaml
+  #   ports:
+  #   - 8888:8888 # Debugging
+  #   - 9901:9901
+  #   healthcheck:
+  #     test:
+  #     - CMD
+  #     - curl
+  #     - --fail
+  #     - "http://envoy-grpc-gateway:9901/healthcheck/ok"
+  #     interval: 30s
+  #     timeout: 30s
+  #     retries: 3
+
+  trillian-log-server:
+    depends_on:
+    - db
+    # Assume Trillian uses GCP Project ID of "trillian"
+    # Works as long as there's a local image tagged as such
+    image: us.gcr.io/trillian-opensource-ci/log_server:latest
+    command:
+    - --mysql_uri=test:zaphod@tcp(db:3306)/test
+    - --rpc_endpoint=:50051
+    - --http_endpoint=:8080
+    - --alsologtostderr
+    expose:
+    - "8080"  # HTTP includes prometheus metrics
+    - "50051" # gRPC
+    ports:
+    - "54051:50051" # Expose gRPC Endpoint to host to permit log creation externally
+    # Images don't include a shell|curl and thus no healthchecks :-(
+    # healthcheck:
+    #   test: 
+    #   - CMD
+    #   - curl
+    #   - --fail
+    #   - "http://trillian-log-server:8080/metrics"
+    #   interval: 30s
+    #   timeout: 30s
+    #   retries: 3
+
+  trillian-log-signer:
+    depends_on:
+    - db
+    # Assume Trillian uses GCP Project ID of "trillian"
+    # Works as long as there's a local image tagged as such
+    image: us.gcr.io/trillian-opensource-ci/log_signer:latest
+    command:
+    - --mysql_uri=test:zaphod@tcp(db:3306)/test
+    - --rpc_endpoint=:50051
+    - --http_endpoint=:8080
+    - --batch_size=1000
+    - --sequencer_guard_window=0
+    - --sequencer_interval=200ms
+    - --force_master
+    - --logtostderr
+    expose:
+    - "8080"  # HTTP includes prometheus metrics
+    - "50051" # gRPC
+    # Images don't include a shell|curl and thus no healthchecks :-(
+    # healthcheck:
+    #   test: 
+    #   - CMD
+    #   - curl
+    #   - --fail
+    #   - "http://trillian-log-signer:8080/metrics"
+    #   interval: 30s
+    #   timeout: 30s
+    #   retries: 3
+
+volumes:
+  trillian-data:
+    external: true

@@ -1,0 +1,36 @@
+FROM golang:1.12 as build
+
+ENV BASICPERSONALITY=${GOPATH}/src/github.com/DazWilkin/basic-personality
+
+WORKDIR ${BASICPERSONALITY}
+
+ARG REPO=github.com/DazWilkin/simple-trillian-log-1.git
+RUN git clone --single-branch --branch=gRPC https://${REPO} .
+
+ENV GO111MODULE=on
+
+# Installs protoc and plugins: protoc-gen-go, protoc-gen-grpc-gateway
+ARG VERS=3.8.0
+ARG ARCH=linux-x86_64
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v${VERS}/protoc-${VERS}-${ARCH}.zip --output-document=./protoc-${VERS}-${ARCH}.zip && \
+    apt update && apt install -y unzip && \
+    unzip -qq -o protoc-${VERS}-${ARCH}.zip -d protoc-${VERS}-${ARCH} && \
+    mv protoc-${VERS}-${ARCH}/bin/* /usr/local/bin && \
+    mv protoc-${VERS}-${ARCH}/include/* /usr/local/include && \
+    go get -u github.com/golang/protobuf/protoc-gen-go && \
+    go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+
+# Generates the Golang protobuf files
+# NB Uses `go list` to determine the correct Modules directory for the package (!) containing Google APIs protos
+RUN protoc --proto_path=${BASICPERSONALITY} --proto_path=$(go list -f '{{ .Dir }}' -m github.com/grpc-ecosystem/grpc-gateway)/third_party/googleapis --go_out=plugins=grpc:${GOPATH}/src --grpc-gateway_out=logtostderr=true:${GOPATH}/src ${BASICPERSONALITY}/protos/*.proto
+
+RUN go get ./client
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /client ./client/
+
+FROM scratch
+COPY --from=build /client /
+
+USER 999
+
+ENTRYPOINT ["/client"]
+CMD ["--grpc_endpoint=:50051"]
