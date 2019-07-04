@@ -29,6 +29,9 @@ service BasicPersonality {
       get: "/v1/thing"
     };
   };
+  rpc WaitThing(ThingRequest) returns (ThingResponse) {
+
+  }
 }
 message ThingRequest {
   Thing thing = 1;
