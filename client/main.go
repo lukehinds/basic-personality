@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/dazwilkin/basic-personality/protos"
+	pb "github.com/DazWilkin/basic-personality/protos"
 	"google.golang.org/grpc"
 )
 
@@ -67,7 +67,7 @@ func main() {
 		go func() {
 			startTime := time.Now()
 			rqst := &pb.ThingRequest{}
-			resp, err := client.GetManifest(ctx, rqst)
+			resp, err := client.GetThing(ctx, rqst)
 			if err != nil {
 				log.Fatal(err)
 			}
