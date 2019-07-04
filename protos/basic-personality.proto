@@ -1,0 +1,88 @@
+// IMAGETRANS=${GOPATH}/src/github.com/google/image-transparency
+// GOOGLEAPIS=${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
+
+// Generates Golang (*.pb.go and *.pb.gw.go)
+// grpc-gateway provides RESTful API --> gRPC
+// https://github.com/grpc-ecosystem/grpc-gateway
+// protoc \
+//   --proto_path=${IMAGETRANS} \
+//   --proto_path=${GOOGLEAPIS} \
+//   --go_out=plugins=grpc:${GOPATH}/src \
+//   --grpc-gateway_out=logtostderr=true:${GOPATH}/src \
+//   ${IMAGETRANS}/protos/*.proto
+
+// Generates Envoy gRPC-JSON Transcoding (envoy.pb)
+// protoc \
+//   --proto_path=${IMAGETRANS} \
+//   --proto_path=${GOOGLEAPIS} \
+//   --include_imports \
+//   --include_source_info \
+//   --descriptor_set_out=${IMAGETRANS}/protos/envoy.pb \
+//   ${IMAGETRANS}/protos/*.proto
+
+// Generates JavaScript (*_pb.js)
+//   protoc  \
+//   --proto_path=${IMAGETRANS}  \
+//   --proto_path=${GOOGLEAPIS}   \
+//   --js_out=import_style=commonjs:${IMAGETRANS} \
+//   ${IMAGETRANS}/protos/*.proto
+
+// Generates Envoy gRPC-Web (*_grpc_web_pb.js)
+// Only need to do this for protos that define services
+//   protoc \
+//   --proto_path=${IMAGETRANS}  \
+//   --proto_path=${GOOGLEAPIS}   \
+//   --grpc-web_out=import_style=commonjs,mode=grpcwebtext:${IMAGETRANS} \
+//   ${IMAGETRANS}/protos/imagetransparency.proto
+
+syntax = "proto3";
+
+// The protobuf package name would result in a generated Golang package name of
+// google_imagetransparency_v1
+package google.basicpersonality.v1;
+
+// go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+// Then must reference in
+// --proto_path=${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
+import "google/api/annotations.proto";
+
+import "protos/manifest.proto";
+import "protos/repository.proto";
+
+// But using this option ensures that the generated Golang package name is more
+// appropriate
+option go_package = "github.com/DazWilkin/basic-personality";
+option java_package = "com.google.basicpersonality";
+
+service BasicPersonality {
+  rpc PutThing(ThingRequest) returns (ThingResponse) {
+    // Define HTTP mapping
+    // Requires the import above
+    option (google.api.http) = {
+      post: "/v1/things"
+      body: "thing"
+    };
+  };
+  rpc GetThing(ThingRequest) returns (ThingResponse) {
+    // Define HTTP
+    // Requires the import above
+    // TODO(dazwilkin) REST API is non-functional: what to GET? A simple type?
+    // Digest?
+    option (google.api.http) = {
+      get: "/v1/thing"
+    };
+  };
+}
+message ThingRequest {
+  Thing thing = 1;
+  Extra extra = 2;
+}
+message ThingResponse {
+  string status = 1;
+}
+message Thing {
+  string name = 1;
+}
+message Extra {
+  string name = 1;
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+// The protobuf package name would result in a generated Golang package name of
+// google_imagetransparency_v1
+package google.imagetransparency.v1;
+
+// go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+import "google/api/annotations.proto";
+
+// But using this option ensures that the generated Golang package name is more
+// appropriate
+option go_package = "github.com/google/image-transparency/protos";
+option java_package = "com.google.imagetransparency";
+
+service Health {
+    // Not possible to have null request so have a request that is null
+    rpc Check(HealthCheckRequest) returns (HealthCheckResponse) {
+      // Define HTTP mapping
+      // Requires the import above
+      option (google.api.http) = {
+        get: "/v1/healthz"
+      };
+    };
+    rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse) {
+    };
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;  
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}
