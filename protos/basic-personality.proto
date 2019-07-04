@@ -46,9 +46,6 @@ package google.basicpersonality.v1;
 // --proto_path=${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
 import "google/api/annotations.proto";
 
-import "protos/manifest.proto";
-import "protos/repository.proto";
-
 // But using this option ensures that the generated Golang package name is more
 // appropriate
 option go_package = "github.com/DazWilkin/basic-personality";
