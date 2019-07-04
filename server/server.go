@@ -10,6 +10,9 @@ import (
 	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
+
+	pb "github.com/DazWilkin/basic-personality/protos"
+	"github.com/gogo/protobuf/proto"
 )
 
 type server struct {
@@ -24,17 +27,32 @@ func newServer(client trillian.TrillianLogClient, logID int64) *server {
 		logID:  logID,
 	}
 }
-func (s *server) put(r *Request) (*Response, error) {
+func (s *server) PutThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
+	log.Printf("PutThing")
+	resp, err := s.put(r)
+	return resp, err
+}
+func (s *server) GetThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
+	log.Printf("GetThing")
+	resp, err := s.get(r)
+	return resp, err
+}
+func (s *server) WaitThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
+	log.Printf("Wait")
+	resp, err := s.wait(r)
+	return resp, err
+}
+func (s *server) put(r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Println("[server:put] Entered")
 
 	// Marshal a Thing (actually just 'name' which is a string) into []byte
 	// Eventually we'll marshal a more interesting data structure
-	leafValue, err := r.thing.Marshal()
+	leafValue, err := proto.Marshal(r.GetThing())
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Marshal an Extra (again)
-	extraData, err := r.extra.Marshal()
+	extraData, err := proto.Marshal(r.GetExtra())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +71,7 @@ func (s *server) put(r *Request) (*Response, error) {
 
 	c := codes.Code(resp.QueuedLeaf.GetStatus().GetCode())
 	if c != codes.OK && c != codes.AlreadyExists {
-		return &Response{}, fmt.Errorf("[server:put] Bad status: %v", resp.QueuedLeaf.GetStatus())
+		return &pb.ThingResponse{}, fmt.Errorf("[server:put] Bad status: %v", resp.QueuedLeaf.GetStatus())
 	}
 	var status string
 	if c == codes.OK {
@@ -62,8 +80,8 @@ func (s *server) put(r *Request) (*Response, error) {
 		status = fmt.Sprintf("LeafValue: %s already exists", leafValue)
 	}
 
-	return &Response{
-		status: status,
+	return &pb.ThingResponse{
+		Status: status,
 	}, nil
 }
 func (s *server) root() (types.LogRootV1, error) {
@@ -80,16 +98,16 @@ func (s *server) root() (types.LogRootV1, error) {
 	}
 	return root, nil
 }
-func (s *server) wait(r *Request) (*Response, error) {
+func (s *server) wait(r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Println("[server:wait] Entered")
 
 	root, err := s.root()
 	if err != nil {
-		return &Response{}, err
+		return &pb.ThingResponse{}, err
 	}
 	log.Printf("[server:wait] Root hash: %x", root.RootHash)
 
-	leafValue, err := r.thing.Marshal()
+	leafValue, err := proto.Marshal(r.GetThing())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,7 +116,7 @@ func (s *server) wait(r *Request) (*Response, error) {
 	hasher := rfc6962.DefaultHasher
 	leafHash, err := hasher.HashLeaf(leafValue)
 	if err != nil {
-		return &Response{}, err
+		return &pb.ThingResponse{}, err
 	}
 
 	rqst := &trillian.GetInclusionProofByHashRequest{
@@ -109,10 +127,10 @@ func (s *server) wait(r *Request) (*Response, error) {
 
 	resp, err := s.client.GetInclusionProofByHash(context.Background(), rqst)
 	if err != nil {
-		return &Response{}, err
+		return &pb.ThingResponse{}, err
 	}
 	if len(resp.Proof) < 1 {
-		return &Response{}, nil
+		return &pb.ThingResponse{}, nil
 	}
 
 	v := merkle.NewLogVerifier(rfc6962.DefaultHasher)
@@ -122,19 +140,19 @@ func (s *server) wait(r *Request) (*Response, error) {
 			log.Printf("[main] proof[%d],hash[%d] == %x\n", i, j, hash)
 		}
 		if err := v.VerifyInclusionProof(proof.LeafIndex, int64(root.TreeSize), hashes, root.RootHash, leafHash); err != nil {
-			return &Response{}, err
+			return &pb.ThingResponse{}, err
 		}
 	}
-	return &Response{
-		status: "ok",
+	return &pb.ThingResponse{
+		Status: "ok",
 	}, nil
 }
-func (s *server) get(r *Request) (*Response, error) {
+func (s *server) get(r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Println("[server:get] Entered")
 
 	// Marshal a Thing (actually just 'name' which is a string) into []byte
 	// Eventually we'll marshal a more interesting data structure
-	leafValue, err := r.thing.Marshal()
+	leafValue, err := proto.Marshal(r.GetThing())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,7 +161,7 @@ func (s *server) get(r *Request) (*Response, error) {
 	hasher := rfc6962.DefaultHasher
 	leafHash, err := hasher.HashLeaf(leafValue)
 	if err != nil {
-		return &Response{}, err
+		return &pb.ThingResponse{}, err
 	}
 	// Output the hashed value (conventionally hex is used)
 	log.Printf("[server:get] hash: %x\n", leafHash)
@@ -157,7 +175,7 @@ func (s *server) get(r *Request) (*Response, error) {
 	// Submit the request to the Trillian Log Server
 	resp, err := s.client.GetLeavesByHash(context.Background(), rqst)
 	if err != nil {
-		return &Response{}, err
+		return &pb.ThingResponse{}, err
 	}
 
 	// Iterate over the responses; there should be 0 or 1
@@ -165,7 +183,7 @@ func (s *server) get(r *Request) (*Response, error) {
 		log.Printf("[server:get] %d: %d %s", i, logLeaf.GetLeafIndex(), logLeaf.GetLeafValue())
 	}
 
-	return &Response{
-		status: "ok",
+	return &pb.ThingResponse{
+		Status: "ok",
 	}, nil
 }

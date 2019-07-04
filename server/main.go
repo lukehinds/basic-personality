@@ -1,22 +1,31 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"sync"
-	"time"
 
 	"github.com/google/trillian"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"go.opencensus.io/zpages"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/channelz/service"
+
+	pb "github.com/DazWilkin/basic-personality/protos"
 )
 
 const (
-	serviceName = "image-transparency-server"
+	serviceName = "basic-personality-server"
 )
 
 var (
+	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to")
+	httpEndpoint = flag.String("http_endpoint", "", "The HTTP endpoint to listen to.")
+	zpgzEndpoint = flag.String("zpgz_endpoint", "", "The port to export zPages.")
 	tLogEndpoint = flag.String("tlog_endpoint", "", "The gRPC endpoint of the Trillian Log Server.")
 	tLogID       = flag.Int64("tlog_id", 0, "Trillian Log ID")
 )
@@ -37,86 +46,43 @@ func main() {
 	log.Println("[main] Creating new Trillian Log Client")
 	tLogClient := trillian.NewTrillianLogClient(conn)
 
-	// Eventually this personality will be a server
-	log.Printf("[main] Creating Server using LogID [%d]", *tLogID)
-	server := newServer(tLogClient, *tLogID)
+	grpcServer := grpc.NewServer()
 
-	// Leaves comprise a primary LeafValue (thing) and may have associated ExtraData(extra)
-	// The LeafValue will become the hashed value for a node in the Merkle Tree
-	log.Println("[main] Creating a 'Thing' and something 'Extra'")
-	thing := newThing(fmt.Sprintf("[%s] Thing", time.Now().Format(time.RFC3339)))
-	extra := newExtra("Extra")
+	// Channelz
+	// See: https://grpc.io/blog/a_short_introduction_to_channelz/
+	service.RegisterChannelzServiceToServer(grpcServer)
+
+	pb.RegisterBasicPersonalityServer(grpcServer, newServer(tLogClient, *tLogID))
+	pb.RegisterHealthServer(grpcServer, newHealthcheckServer())
+
+	httpServeMux := http.NewServeMux()
+
+	transcoder := runtime.NewServeMux()
+	dialOpts := []grpc.DialOption{
+		grpc.WithInsecure(),
+	}
+	err = pb.RegisterBasicPersonalityHandlerFromEndpoint(context.Background(), transcoder, *httpEndpoint, dialOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	httpServeMux.Handle("/api", transcoder)
+	// httpServeMux.HandleFunc("/healthz", healthz)
+
+	zPagesMux := http.NewServeMux()
+	zpages.Handle(zPagesMux, "/")
 
 	var wg sync.WaitGroup
-
-	// Try to put this Request (Thing+Extra) in the Log
-	log.Println("[main] Submitting it for inclusion in the Trillian Log")
+	// gRPC Server
 	wg.Add(1)
 	go func() {
-		defer func() {
-			log.Println("[main:put] Done")
-			wg.Done()
-		}()
-		log.Println("[main:put] Entered")
-		resp, err := server.put(&Request{
-			thing: *thing,
-			extra: *extra,
-		})
+		defer wg.Done()
+		listen, err := net.Listen("tcp", *grpcEndpoint)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("[main:put] Status:%s", resp.status)
-	}()
-
-	// Await the Inclusion (Proof)
-	log.Println("[main] Awaiting Inclusion (Proof) in the Trillian Log")
-	wg.Add(1)
-	go func() {
-		defer func() {
-			log.Println("[main:wait] Done")
-			wg.Done()
-		}()
-		log.Println("[main:wait] Entered")
-		for {
-			resp, err := server.wait(&Request{
-				thing: *thing,
-			})
-			if err != nil {
-				log.Printf("[main:wait] %s", err)
-			}
-			log.Printf("[main:wait] Status:%s", resp.status)
-			if resp.status == "ok" {
-				break
-			}
-			log.Println("[main:wait] Sleeping")
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	// Try to get this Request (Thing+Extra) from the Log
-	log.Println("[main] Retrieving it from the Trillian Log")
-	wg.Add(1)
-	go func() {
-		defer func() {
-			log.Println("[main:get] Done")
-			wg.Done()
-		}()
-		log.Println("[main:get] Entered")
-		for {
-			resp, err := server.get(&Request{
-				thing: *thing,
-				extra: *extra,
-			})
-			if err != nil {
-				log.Printf("[main:get] %s", err)
-			}
-			log.Printf("[main:get] Status:%s", resp.status)
-			if resp.status == "ok" {
-				break
-			}
-			log.Println("[main:get] Sleeping")
-			time.Sleep(1 * time.Second)
-		}
+		log.Printf("Starting gRPC Listener [%s]\n", *grpcEndpoint)
+		log.Fatal(grpcServer.Serve(listen))
+		// log.Fatal(http.ListenAndServeTLS(*grpcEndpoint, *tlsCrt, *tlsKey, grpcServer))
 	}()
 
 	wg.Wait()

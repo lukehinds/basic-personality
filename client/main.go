@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"time"
@@ -50,11 +51,19 @@ func main() {
 	}()
 
 	for {
+		log.Println("[main] Creating a 'Thing' and something 'Extra'")
+		thing := &pb.ThingRequest{
+			Thing: &pb.Thing{
+				Name: fmt.Sprintf("[%s] Thing", time.Now().Format(time.RFC3339)),
+			},
+			Extra: &pb.Extra{
+				Name: "Extra",
+			},
+		}
 		// PutThing
 		go func() {
 			startTime := time.Now()
-			rqst := &pb.ThingRequest{}
-			resp, err := client.PutThing(ctx, rqst)
+			resp, err := client.PutThing(ctx, thing)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -63,17 +72,42 @@ func main() {
 			log.Printf("%v", resp)
 
 		}()
+		// WaitThing
+		go func() {
+			for {
+				startTime := time.Now()
+				resp, err := client.WaitThing(ctx, thing)
+				if err != nil {
+					// Not fatal but anticipated
+					log.Println(err)
+				}
+				latencyMs := float64(time.Since(startTime)) / 1e6
+				log.Printf("GetThing Latency: %f", latencyMs)
+				log.Printf("%v", resp)
+				if resp.GetStatus() == "ok" {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}()
+
 		// GetThing
 		go func() {
-			startTime := time.Now()
-			rqst := &pb.ThingRequest{}
-			resp, err := client.GetThing(ctx, rqst)
-			if err != nil {
-				log.Fatal(err)
+			for {
+				startTime := time.Now()
+				resp, err := client.GetThing(ctx, thing)
+				if err != nil {
+					// Not fatal but anticipated
+					log.Println(err)
+				}
+				latencyMs := float64(time.Since(startTime)) / 1e6
+				log.Printf("GetThing Latency: %f", latencyMs)
+				log.Printf("%v", resp)
+				if resp.GetStatus() == "ok" {
+					break
+				}
+				time.Sleep(1 * time.Second)
 			}
-			latencyMs := float64(time.Since(startTime)) / 1e6
-			log.Printf("GetThing Latency: %f", latencyMs)
-			log.Printf("%v", resp)
 		}()
 		time.Sleep(5 * time.Second)
 	}
