@@ -86,7 +86,7 @@ services:
     command:
     - --grpc_endpoint=:50051
     - --http_endpoint=:8080
-    - --cnss_endpoint=opencensus-agent:55678
+    # - --cnss_endpoint=opencensus-agent:55678
     - --zpgz_endpoint=:9999
     - --tlog_endpoint=trillian-log-server:50051
     - --tlog_id=${LOGID}
@@ -118,8 +118,8 @@ services:
       dockerfile: ./Dockerfile.client
     command:
     - --grpc_endpoint=basic-personality-server:50051
-    - --cnss_endpoint=opencensus-agent:55678
-    - --zpgz_endpoint=:9999
+    # - --cnss_endpoint=opencensus-agent:55678
+    # - --zpgz_endpoint=:9999
     expose:
     - "9999" # zPages
     ports:
@@ -156,7 +156,7 @@ services:
     - db
     # Assume Trillian uses GCP Project ID of "trillian"
     # Works as long as there's a local image tagged as such
-    image: us.gcr.io/trillian-opensource-ci/log_server:latest
+    image: gcr.io/trillian-opensource-ci/log_server:latest
     command:
     - --mysql_uri=test:zaphod@tcp(db:3306)/test
     - --rpc_endpoint=:50051
@@ -183,7 +183,7 @@ services:
     - db
     # Assume Trillian uses GCP Project ID of "trillian"
     # Works as long as there's a local image tagged as such
-    image: us.gcr.io/trillian-opensource-ci/log_signer:latest
+    image: gcr.io/trillian-opensource-ci/log_signer:latest
     command:
     - --mysql_uri=test:zaphod@tcp(db:3306)/test
     - --rpc_endpoint=:50051
