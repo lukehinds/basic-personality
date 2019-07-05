@@ -5,7 +5,7 @@ ENV BASICPERSONALITY=${GOPATH}/src/github.com/DazWilkin/basic-personality
 WORKDIR ${BASICPERSONALITY}
 
 ARG REPO=github.com/DazWilkin/simple-trillian-log-1.git
-RUN git clone --single-branch --branch=gRPC https://${REPO} .
+RUN git clone --single-branch --branch=opencensus https://${REPO} .
 
 ENV GO111MODULE=on
 
@@ -37,4 +37,4 @@ EXPOSE 9999
 EXPOSE 50051
 
 ENTRYPOINT ["/server"]
-CMD ["--grpc_endpoint=:50051","--http_endpoint=:8080","--cnss_endpoint=:55678","--zpgz_endpoint=:9999"]
+CMD ["--grpc_endpoint=:50051","--http_endpoint=:8080","--ocag_endpoint=:55678","--zpgz_endpoint=:9999"]
