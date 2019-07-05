@@ -76,7 +76,7 @@ func main() {
 
 	// zPages
 	zPagesMux := http.NewServeMux()
-	zpages.Handle(zPagesMux, "/")
+	zpages.Handle(zPagesMux, "/debug")
 
 	var wg sync.WaitGroup
 	// gRPC Server

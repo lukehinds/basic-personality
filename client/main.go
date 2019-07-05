@@ -40,7 +40,7 @@ func main() {
 
 	// zPages
 	zPagesMux := http.NewServeMux()
-	zpages.Handle(zPagesMux, "/")
+	zpages.Handle(zPagesMux, "/debug")
 
 	// zPages Server
 	var wg sync.WaitGroup
