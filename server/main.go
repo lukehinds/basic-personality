@@ -66,8 +66,8 @@ func main() {
 		log.Fatal(err)
 	}
 	httpServeMux.Handle("/api", transcoder)
-	// httpServeMux.HandleFunc("/healthz", healthz)
 
+	// zPages
 	zPagesMux := http.NewServeMux()
 	zpages.Handle(zPagesMux, "/")
 
@@ -82,7 +82,22 @@ func main() {
 		}
 		log.Printf("Starting gRPC Listener [%s]\n", *grpcEndpoint)
 		log.Fatal(grpcServer.Serve(listen))
-		// log.Fatal(http.ListenAndServeTLS(*grpcEndpoint, *tlsCrt, *tlsKey, grpcServer))
+	}()
+
+	// zPages Server
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		zpgzServer := &http.Server{
+			Addr:    *zpgzEndpoint,
+			Handler: zPagesMux,
+		}
+		listen, err := net.Listen("tcp", *zpgzEndpoint)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Starting zPages Listener [%s]\n", *zpgzEndpoint)
+		log.Fatal(zpgzServer.Serve(listen))
 	}()
 
 	wg.Wait()
