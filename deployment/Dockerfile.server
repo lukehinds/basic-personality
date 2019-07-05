@@ -5,7 +5,8 @@ ENV BASICPERSONALITY=${GOPATH}/src/github.com/DazWilkin/basic-personality
 WORKDIR ${BASICPERSONALITY}
 
 ARG REPO=github.com/DazWilkin/simple-trillian-log-1.git
-RUN git clone --single-branch --branch=opencensus https://${REPO} .
+ARG BRANCH=opencensus
+RUN git clone --single-branch --branch=${BRANCH} https://${REPO} .
 
 ENV GO111MODULE=on
 
