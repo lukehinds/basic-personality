@@ -16,6 +16,8 @@ import (
 	"google.golang.org/grpc/channelz/service"
 
 	pb "github.com/DazWilkin/basic-personality/protos"
+	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats/view"
 )
 
 const (
@@ -34,6 +36,10 @@ func main() {
 	log.Println("[main] Entered")
 	flag.Parse()
 
+	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+		log.Fatal(err)
+	}
+
 	// Establish gRPC connection w/ Trillian Log Server
 	log.Printf("[main] Establishing connection w/ Trillian Log Server [%s]", *tLogEndpoint)
 	conn, err := grpc.Dial(*tLogEndpoint, grpc.WithInsecure())
@@ -46,7 +52,8 @@ func main() {
 	log.Println("[main] Creating new Trillian Log Client")
 	tLogClient := trillian.NewTrillianLogClient(conn)
 
-	grpcServer := grpc.NewServer()
+	// gRPC server utilizes default stats|trace handling w/ OpenCensus
+	grpcServer := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 
 	// Channelz
 	// See: https://grpc.io/blog/a_short_introduction_to_channelz/
