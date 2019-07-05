@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "github.com/DazWilkin/basic-personality/protos"
+	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/zpages"
 	"google.golang.org/grpc"
 )
@@ -26,6 +27,7 @@ func main() {
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
+		grpc.WithStatsHandler(&ocgrpc.ClientHandler{}),
 	}
 	conn, err := grpc.Dial(*grpcEndpoint, opts...)
 	if err != nil {
