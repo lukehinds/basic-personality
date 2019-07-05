@@ -23,6 +23,37 @@ services:
       - --fail
       - "http://prometheus:9090/-/healthy"
 
+  opencensus-agent:
+    image: omnition/opencensus-agent:0.1.8
+    command:
+    - --config=/configs/ocagent.yaml
+    volumes:
+    - "${PWD}/ocagent.yaml:/configs/ocagent.yaml"
+    expose:
+    - "9100"  # ocagent.yaml defined Prometheus Exporter
+    - "9999"  # ocagent.yaml defined zPages
+    - "55678" # ocagent.yaml defined OpenCensus Receiver
+    ports:
+    - 9100:9100 # Debugging: Prometheus Metrics Exporter
+    - 9999:9999 # Debugging: zPages
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - --fail
+      - "http://opencensus-agent:9090/metrics"
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    expose:
+    - "9411"
+    ports:
+      - 9411:9411
+
   # Assumes "test" database has been initialized outside (!) of Docker Compose (mysql-data)
   db:
     image: mariadb:10.4.6
@@ -46,14 +77,20 @@ services:
 
   basic-personality-server:
     depends_on:
+    - opencensus-agent
     - trillian-log-server
-    image: us.gcr.io/${PROJECT}/basic-personality-server@sha256:7e67151a9038796551ed5b33ed8c6dc581fe2830f2762aff233d85f71c2b662e
+    image: us.gcr.io/${PROJECT}/basic-personality-server@sha256:50e36d8eef9fba9c169318c714e69ba92cca93f796a23675db3526ade33c618b
     # build:
     #   context: .
     #   dockerfile: ./Dockerfile.server
+    #   args:
+    #   - BRANCH=opencensus
+    #   - VERS=3.8.0
+    #   - ARCH=linux-x86_64
     command:
     - --grpc_endpoint=:50051
     - --http_endpoint=:8080
+    - --ocag_endpoint=opencensus-agent:55678
     - --zpgz_endpoint=:9999
     - --tlog_endpoint=trillian-log-server:50051
     - --tlog_id=${LOGID}
@@ -67,13 +104,19 @@ services:
 
   basic-personality-client:
     depends_on:
+    - opencensus-agent
     - basic-personality-server
-    image: us.gcr.io/${PROJECT}/basic-personality-client@sha256:62f93d2d70a9db2baa2aaaa3ea73fc06df37d95ee2e4c4c577d10f89511462cb
+    image: us.gcr.io/${PROJECT}/basic-personality-client@sha256:1f27448924857a47d41af2506cc117c99fcb999ea35a325bf15119b54e09a130
     # build:
     #   context: .
     #   dockerfile: ./Dockerfile.client
+    #   args:
+    #   - BRANCH=opencensus
+    #   - VERS=3.8.0
+    #   - ARCH=linux-x86_64
     command:
     - --grpc_endpoint=basic-personality-server:50051
+    - --ocag_endpoint=opencensus-agent:55678
     - --zpgz_endpoint=:9999
     expose:
     - "9999" # zPages
