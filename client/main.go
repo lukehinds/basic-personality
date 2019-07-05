@@ -11,19 +11,43 @@ import (
 	"sync"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/ocagent"
 	pb "github.com/DazWilkin/basic-personality/protos"
 	"go.opencensus.io/plugin/ocgrpc"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
 	"go.opencensus.io/zpages"
 	"google.golang.org/grpc"
 )
 
+const (
+	serviceName = "basic-personality-client"
+)
+
 var (
 	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC endpoint to dial.")
+	ocagEndpoint = flag.String("ocag_endpoint", "", "The gRPC endpoint of the OpenCensus Agent.")
 	zpgzEndpoint = flag.String("zpgz_endpoint", "", "The port to export zPages.")
 )
 
 func main() {
+	log.Println("[main] Entered")
 	flag.Parse()
+
+	log.Printf("[main] Starting OpenCensus Agent exporter [%s]\n", *ocagEndpoint)
+	oc, err := ocagent.NewExporter(
+		ocagent.WithAddress(*ocagEndpoint),
+		ocagent.WithInsecure(),
+		ocagent.WithReconnectionPeriod(10*time.Second),
+		ocagent.WithServiceName(serviceName),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer oc.Stop()
+
+	view.RegisterExporter(oc)
+	trace.RegisterExporter(oc)
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),

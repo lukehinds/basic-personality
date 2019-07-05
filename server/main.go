@@ -7,17 +7,18 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
+	"contrib.go.opencensus.io/exporter/ocagent"
+	pb "github.com/DazWilkin/basic-personality/protos"
 	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"go.opencensus.io/zpages"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/channelz/service"
-
-	pb "github.com/DazWilkin/basic-personality/protos"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
+	"go.opencensus.io/zpages"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/channelz/service"
 )
 
 const (
@@ -25,16 +26,32 @@ const (
 )
 
 var (
-	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to")
+	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to.")
 	httpEndpoint = flag.String("http_endpoint", "", "The HTTP endpoint to listen to.")
+	ocagEndpoint = flag.String("ocag_endpoint", "", "The gRPC endpoint of the OpenCensus Agent.")
 	zpgzEndpoint = flag.String("zpgz_endpoint", "", "The port to export zPages.")
 	tLogEndpoint = flag.String("tlog_endpoint", "", "The gRPC endpoint of the Trillian Log Server.")
-	tLogID       = flag.Int64("tlog_id", 0, "Trillian Log ID")
+	tLogID       = flag.Int64("tlog_id", 0, "Trillian Log ID.")
 )
 
 func main() {
 	log.Println("[main] Entered")
 	flag.Parse()
+
+	log.Printf("[main] Starting OpenCensus Agent exporter [%s]\n", *ocagEndpoint)
+	oc, err := ocagent.NewExporter(
+		ocagent.WithAddress(*ocagEndpoint),
+		ocagent.WithInsecure(),
+		ocagent.WithReconnectionPeriod(10*time.Second),
+		ocagent.WithServiceName(serviceName),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer oc.Stop()
+
+	view.RegisterExporter(oc)
+	trace.RegisterExporter(oc)
 
 	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
 		log.Fatal(err)
