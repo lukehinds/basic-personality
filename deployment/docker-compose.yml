@@ -47,10 +47,10 @@ services:
   basic-personality-server:
     depends_on:
     - trillian-log-server
-    image: us.gcr.io/${PROJECT}/basic-personality-server@sha256:25774ac8a252e79f8e7fbe8463a887afb408ed054a56d1595dd9d8dfd7ab5e05
-    build:
-      context: .
-      dockerfile: ./Dockerfile.server
+    image: us.gcr.io/${PROJECT}/basic-personality-server@sha256:7e67151a9038796551ed5b33ed8c6dc581fe2830f2762aff233d85f71c2b662e
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile.server
     command:
     - --grpc_endpoint=:50051
     - --http_endpoint=:8080
@@ -63,16 +63,15 @@ services:
     - "9999"  # zPages
     ports:
     - 8080:8080
-    - 9900:9900
     - 9998:9999
 
   basic-personality-client:
     depends_on:
     - basic-personality-server
-    image: us.gcr.io/${PROJECT}/basic-personality-client@sha256:67986a541ef3e5e671e9970445311aeb1215c7fc8a97ed777c580c67bee885f3
-    build:
-      context: .
-      dockerfile: ./Dockerfile.client
+    image: us.gcr.io/${PROJECT}/basic-personality-client@sha256:62f93d2d70a9db2baa2aaaa3ea73fc06df37d95ee2e4c4c577d10f89511462cb
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile.client
     command:
     - --grpc_endpoint=basic-personality-server:50051
     - --zpgz_endpoint=:9999
@@ -86,6 +85,7 @@ services:
     - db
     # See https://console.cloud.google.com/gcr/images/trillian-opensource-ci/GLOBAL        
     image: gcr.io/trillian-opensource-ci/log_server@sha256:f3ba85189d599d2752e57e71b641100e711683b9b8e1d4f17769e047a2864cea
+    restart: always
     command:
     - --mysql_uri=test:zaphod@tcp(db:3306)/test
     - --rpc_endpoint=:50051
@@ -102,6 +102,7 @@ services:
     - db
     # See https://console.cloud.google.com/gcr/images/trillian-opensource-ci/GLOBAL
     image: gcr.io/trillian-opensource-ci/log_signer@sha256:d17bdcce6c6adf602ad57aa15d18ea4a72259a86b2017a2377442bd972b594d9
+    restart: always
     command:
     - --mysql_uri=test:zaphod@tcp(db:3306)/test
     - --rpc_endpoint=:50051
