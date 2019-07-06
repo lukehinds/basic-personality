@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -43,7 +44,7 @@ func main() {
 
 	je, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint:          *jeagEndpoint,
-		CollectorEndpoint:      *jecoEndpoint,
+		CollectorEndpoint:      *jeocEndpoint,
 		ServiceName:            fmt.Sprintf("test-%s",serviceName),
 	})
 	if err != nil {
