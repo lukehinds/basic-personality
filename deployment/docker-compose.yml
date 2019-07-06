@@ -57,6 +57,7 @@ services:
     - "14250" # Collector: Accepts model.proto (?)
     - "16686" # HTTP UI
     ports:
+    - 6831:6831/udp
     - 14269:14269
     - 16686:16686
   
@@ -95,19 +96,21 @@ services:
     depends_on:
     - opencensus-agent
     - trillian-log-server
-    image: us.gcr.io/basic-personality/basic-personality-server@sha256:50e36d8eef9fba9c169318c714e69ba92cca93f796a23675db3526ade33c618b
+    image: us.gcr.io/basic-personality/basic-personality-server:jaeger-direct
     container_name: basic-personality-server
     restart: always
-    # build:
-    #   context: .
-    #   dockerfile: ./Dockerfile.server
-    #   args:
-    #   - BRANCH=opencensus
-    #   - VERS=3.8.0
-    #   - ARCH=linux-x86_64
+    build:
+      context: .
+      dockerfile: ./Dockerfile.server
+      args:
+      - BRANCH=jaeger-direct
+      - VERS=3.8.0
+      - ARCH=linux-x86_64
     command:
     - --grpc_endpoint=:50051
     - --http_endpoint=:8080
+    - --jeag_endpoint=jaeger:6831
+    - --jeoc_endpoint=jaeger:14268/api/traces
     - --ocag_endpoint=opencensus-agent:55678
     - --zpgz_endpoint=:9999
     - --tlog_endpoint=trillian-log-server:50051

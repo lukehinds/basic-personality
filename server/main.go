@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
+	"contrib.go.opencensus.io/exporter/jaeger"
 	pb "github.com/DazWilkin/basic-personality/protos"
 	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -28,6 +29,8 @@ const (
 var (
 	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to.")
 	httpEndpoint = flag.String("http_endpoint", "", "The HTTP endpoint to listen to.")
+	jeagEndpoint = flag.String("jeag_endpoint", "", "The Jaeger Agent Endpoint.")
+	jeocEndpoint = flag.String("jeoc_endpoint", "", "The Jaeger Collector Endpoint.")
 	ocagEndpoint = flag.String("ocag_endpoint", "", "The gRPC endpoint of the OpenCensus Agent.")
 	zpgzEndpoint = flag.String("zpgz_endpoint", "", "The port to export zPages.")
 	tLogEndpoint = flag.String("tlog_endpoint", "", "The gRPC endpoint of the Trillian Log Server.")
@@ -37,6 +40,18 @@ var (
 func main() {
 	log.Println("[main] Entered")
 	flag.Parse()
+
+	je, err := jaeger.NewExporter(jaeger.Options{
+		AgentEndpoint:          *jeagEndpoint,
+		CollectorEndpoint:      *jecoEndpoint,
+		ServiceName:            fmt.Sprintf("test-%s",serviceName),
+	})
+	if err != nil {
+		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
+	}
+
+	// And now finally register it as a Trace Exporter
+	trace.RegisterExporter(je)
 
 	log.Printf("[main] Starting OpenCensus Agent exporter [%s]\n", *ocagEndpoint)
 	oc, err := ocagent.NewExporter(
