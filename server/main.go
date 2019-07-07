@@ -10,8 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"contrib.go.opencensus.io/exporter/ocagent"
 	"contrib.go.opencensus.io/exporter/jaeger"
+	"contrib.go.opencensus.io/exporter/ocagent"
+	"contrib.go.opencensus.io/exporter/stackdriver"
+
 	pb "github.com/DazWilkin/basic-personality/protos"
 	"github.com/google/trillian"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -28,6 +30,7 @@ const (
 )
 
 var (
+	projectId    = flag.String("project_id", "", "GCP Project ID for Stackdriver Trace.")
 	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to.")
 	httpEndpoint = flag.String("http_endpoint", "", "The HTTP endpoint to listen to.")
 	jeagEndpoint = flag.String("jeag_endpoint", "", "The Jaeger Agent Endpoint.")
@@ -42,10 +45,24 @@ func main() {
 	log.Println("[main] Entered")
 	flag.Parse()
 
+	log.Printf("[main] Starting Stackdriver exporter [%s]\n", *ocagEndpoint)
+	sd, err := stackdriver.NewExporter(stackdriver.Options{
+		ProjectID:    *projectId,
+		MetricPrefix: fmt.Sprintf("test-%s", serviceName),
+	})
+	if err != nil {
+		log.Fatalf("Failed to create the Stackdriver exporter: %v", err)
+	}
+	defer sd.Flush()
+
+	view.RegisterExporter(sd)
+	view.SetReportingPeriod(60 * time.Second)
+
+	log.Printf("[main] Starting Jaeger exporter [agent:%s; collector:%s]\n", *jeagEndpoint, *jeocEndpoint)
 	je, err := jaeger.NewExporter(jaeger.Options{
-		AgentEndpoint:          *jeagEndpoint,
-		CollectorEndpoint:      *jeocEndpoint,
-		ServiceName:            fmt.Sprintf("test-%s",serviceName),
+		AgentEndpoint:     *jeagEndpoint,
+		CollectorEndpoint: *jeocEndpoint,
+		ServiceName:       fmt.Sprintf("test-%s", serviceName),
 	})
 	if err != nil {
 		log.Fatalf("Failed to create the Jaeger exporter: %v", err)
