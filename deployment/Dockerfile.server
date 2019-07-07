@@ -5,7 +5,7 @@ ENV BASICPERSONALITY=${GOPATH}/src/github.com/DazWilkin/basic-personality
 WORKDIR ${BASICPERSONALITY}
 
 ARG REPO=github.com/DazWilkin/simple-trillian-log-1.git
-ARG BRANCH=opencensus
+ARG BRANCH=jaeger-direct
 RUN git clone --single-branch --branch=${BRANCH} https://${REPO} .
 
 ENV GO111MODULE=on
