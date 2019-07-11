@@ -95,7 +95,7 @@ services:
     depends_on:
     - opencensus-agent
     - trillian-log-server
-    image: us.gcr.io/${PROJECT}/basic-personality-server@sha256:50e36d8eef9fba9c169318c714e69ba92cca93f796a23675db3526ade33c618b
+    image: us.gcr.io/basic-personality/basic-personality-server@sha256:50e36d8eef9fba9c169318c714e69ba92cca93f796a23675db3526ade33c618b
     container_name: basic-personality-server
     restart: always
     # build:
@@ -124,7 +124,7 @@ services:
     depends_on:
     - opencensus-agent
     - basic-personality-server
-    image: us.gcr.io/${PROJECT}/basic-personality-client@sha256:1f27448924857a47d41af2506cc117c99fcb999ea35a325bf15119b54e09a130
+    image: us.gcr.io/basic-personality/basic-personality-client@sha256:1f27448924857a47d41af2506cc117c99fcb999ea35a325bf15119b54e09a130
     container_name: basic-personality-client
     restart: always
     # build:
