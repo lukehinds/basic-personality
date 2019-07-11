@@ -1,0 +1,11 @@
+FROM scratch
+COPY  ./bin/client /client
+
+USER 999
+
+
+
+
+
+ENTRYPOINT ["/client"]
+CMD ["--grpc_endpoint=:50051","--ocag_endpoint=:55678","--zpgz_endpoint=:9999"]

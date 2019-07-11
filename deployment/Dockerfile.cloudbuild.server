@@ -1,0 +1,11 @@
+FROM scratch
+COPY  ./bin/server /server
+
+USER 999
+
+EXPOSE 8080
+EXPOSE 9999
+EXPOSE 50051
+
+ENTRYPOINT ["/server"]
+CMD ["--grpc_endpoint=:50051","--http_endpoint=:8080","--ocag_endpoint=:55678","--zpgz_endpoint=:9999"]
