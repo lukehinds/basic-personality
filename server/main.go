@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	projectId    = flag.String("project_id", "", "GCP Project ID for Stackdriver Trace.")
+	projectID    = flag.String("project_id", "", "GCP Project ID for Stackdriver Trace.")
 	grpcEndpoint = flag.String("grpc_endpoint", "", "The gRPC Endpoint to list to.")
 	httpEndpoint = flag.String("http_endpoint", "", "The HTTP endpoint to listen to.")
 	jeagEndpoint = flag.String("jeag_endpoint", "", "The Jaeger Agent Endpoint.")
@@ -47,7 +47,7 @@ func main() {
 
 	log.Printf("[main] Starting Stackdriver exporter [%s]\n", *ocagEndpoint)
 	sd, err := stackdriver.NewExporter(stackdriver.Options{
-		ProjectID:    *projectId,
+		ProjectID:    *projectID,
 		MetricPrefix: fmt.Sprintf("test-%s", serviceName),
 	})
 	if err != nil {
@@ -57,6 +57,8 @@ func main() {
 
 	view.RegisterExporter(sd)
 	view.SetReportingPeriod(60 * time.Second)
+
+	trace.RegisterExporter(sd)
 
 	log.Printf("[main] Starting Jaeger exporter [agent:%s; collector:%s]\n", *jeagEndpoint, *jeocEndpoint)
 	je, err := jaeger.NewExporter(jaeger.Options{
@@ -103,7 +105,19 @@ func main() {
 	tLogClient := trillian.NewTrillianLogClient(conn)
 
 	// gRPC server utilizes default stats|trace handling w/ OpenCensus
-	grpcServer := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{}))
+	grpcServer := grpc.NewServer(grpc.StatsHandler(&ocgrpc.ServerHandler{
+		StartOptions: trace.StartOptions{
+			Sampler: trace.AlwaysSample(),
+		},
+	}))
+
+	// Test Redoing (!) the AlwaysSample config
+	trace.ApplyConfig(trace.Config{
+		DefaultSampler: trace.AlwaysSample(),
+	})
+
+	// Test Start Span
+	trace.StartSpan(context.Background(), "main")
 
 	// Channelz
 	// See: https://grpc.io/blog/a_short_introduction_to_channelz/

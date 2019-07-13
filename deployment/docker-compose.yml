@@ -22,7 +22,7 @@ services:
       - CMD
       - curl
       - --fail
-      - "http://prometheus:9090/-/healthy"
+      - "http://localhost:9090/-/healthy"
 
   opencensus-agent:
     image: omnition/opencensus-agent:0.1.8
@@ -43,7 +43,7 @@ services:
       - CMD
       - curl
       - --fail
-      - "http://opencensus-agent:9090/metrics"
+      - "http://localhost:9090/metrics"
       interval: 30s
       timeout: 30s
       retries: 3
@@ -96,17 +96,22 @@ services:
     depends_on:
     - opencensus-agent
     - trillian-log-server
-    image: us.gcr.io/basic-personality/basic-personality-server:jaeger-direct
+    image: us.gcr.io/basic-personality/basic-personality-server:stackdriver-direct-plus
     container_name: basic-personality-server
     restart: always
     build:
       context: .
       dockerfile: ./Dockerfile.server
       args:
-      - BRANCH=jaeger-direct
-      - VERS=3.8.0
-      - ARCH=linux-x86_64
+        BRANCH: jaeger-direct
+        VERS: 3.8.0
+        ARCH: linux-x86_64
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/client_secret.json
+    volumes:
+    - "${PWD}/client_secret.json:/secrets/client_secret.json"
     command:
+    - --project_id=dazwilkin-190707-basic-perso
     - --grpc_endpoint=:50051
     - --http_endpoint=:8080
     - --jeag_endpoint=jaeger:6831

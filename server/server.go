@@ -9,6 +9,7 @@ import (
 	"github.com/google/trillian/merkle"
 	"github.com/google/trillian/merkle/rfc6962"
 	"github.com/google/trillian/types"
+	"go.opencensus.io/trace"
 	"google.golang.org/grpc/codes"
 
 	pb "github.com/DazWilkin/basic-personality/protos"
@@ -29,16 +30,22 @@ func newServer(client trillian.TrillianLogClient, logID int64) *server {
 }
 func (s *server) PutThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Printf("PutThing")
+	ctx, span := trace.StartSpan(ctx, "server/PutThing")
+	defer span.End()
 	resp, err := s.put(r)
 	return resp, err
 }
 func (s *server) GetThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Printf("GetThing")
+	// ctx, span := trace.StartSpan(ctx, "server/GetThing")
+	// defer span.End()
 	resp, err := s.get(r)
 	return resp, err
 }
 func (s *server) WaitThing(ctx context.Context, r *pb.ThingRequest) (*pb.ThingResponse, error) {
 	log.Printf("Wait")
+	// ctx, span := trace.StartSpan(ctx, "server/WaitThing")
+	// defer span.End()
 	resp, err := s.wait(r)
 	return resp, err
 }
