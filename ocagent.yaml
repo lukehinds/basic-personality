@@ -6,7 +6,7 @@ receivers:
 exporters:
   jaeger:
     # The 'jaeger' service
-    collector_endpoint: "jaeger:14268/api/traces"
+    collector_endpoint: "http://jaeger:14268/api/traces"
   prometheus:
     # This host
     address: ":9100"
